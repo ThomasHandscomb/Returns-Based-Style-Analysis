@@ -36,38 +36,41 @@ e = matrix(1,T,1)
 M <- diag(T) - ((e %*% t(e))/T)
 M
 
-eigen(M)$values
+#eigen(M)$values
 
 D <- (2/T)*t(F) %*% M %*% F
 
 # Check that D is symmetric, positive semi-definite
 D - (D+t(D))/2
 
-## Set up the linear dvec coefficient
+## Set up dvec
 d <- 2*(((1/T) * t(R) %*% F) - (1/(T^2))*(t(e) %*% R %*% t(e) %*% F))
 d
 
-# Build up the constraint matrix A
-L = c(rep(1,n))
-L
-
-A <- t(rbind(L, diag(n), -diag(n)))
+# Build up the constraint matrix A and bvec, b0
+A <- t(rbind(rep(1,n), diag(n), -diag(n)))
 A
 
 # Define the constraint coefficient column vector b0
 b0 <- matrix(c(1, rep(0,n), rep(-1,n)))
 b0
 
-# Solve the QP. Note the transpose taken for dvec and Amat
-sol <- solve.QP(Dmat = D, dvec = d, Amat = A, bvec = b0, meq = 1)
+# Call the QP solver
+sol <- solve.QP(Dmat = D, dvec = t(d), Amat = A, bvec = b0, meq = 1)
+
+# The solution gives the vector w comprised of optimal weights
 sol$solution
 
-# Double check that the sum of the beta coefficients = 1
+#> sol$solution
+#[1] 0.6679001 0.0000000 0.3320999 0.0000000
+
+# Double check that the sum of the w_i coefficients = 1
 runtot = 0
 for (i in 1:n){
   runtot =+ runtot + sol$solution[i]
 }
 print (runtot)
+#[1] 1
 
 # Construct the optimised solution from the solve.QP output
 wvec  = {}
@@ -77,18 +80,24 @@ for (j in 1:n){
 wvec
 
 # Once the weight matrix has been constructed, the optimal solution can then be constructed
-opsol <- F %*% Betavec
+opsol <- F %*% wvec
 opsol
 
-# View the return stream and the optimal solution
-plot(R, ylim = c(0.0, 2.00))
-points(opsol, col = 'blue')
-
 # Calculate the fit of the optimal solution, recall the optimisation model is minimising var(R-F*wvec) 
-var(R-opsol)
+var(R-opsol) #0.006430116
+
+# View a plot of the return stream and the optimal solution
+plot(R, ylim = c(0.0, 2.50), type = 'b'
+     , main="Return stream vs. Optimal solution"
+     , xlab="Time"
+     , ylab="Return")
+points(opsol, col = 'blue', type = 'b')
+legend("topleft", legend=c("Investment", "Optimal Solution")
+       , col=c("black", "blue")
+       , lty=c(1,1))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Try 1000 random solutions to check that you can't achieve a lower variance
+# Try 10000 random solutions to check that you can't achieve a lower variance
 
 # First create solution data frame with first row as the QP solved optimal solution
 df_solutions = data.frame("Solution_ID" = character(0), "Variance" = numeric(0))
@@ -96,14 +105,16 @@ df_solutions = rbind(df_solutions, c(as.character("Optimal"), as.numeric(var(R-o
 colnames(df_solutions) <- c("Solution_Id", "Variance")
 #head(df_solutions)
 
-# Then create 1000 random choices of weights that sum to 1 and 1000 corresponding random solutions
-for (i in 1:1000){
+# Then create 10000 random choices of weights that sum to 1 and corresponding random solutions
+for (i in 1:10000){
   # Define random weights
-  rancoef1 = runif(1, 0, 0.3)
-  rancoef2 = runif(1, 0, 0.3)
-  rancoef3 = runif(1, 0, 0.3)
-  rancoef4 = 1- rancoef1 - rancoef2 - rancoef3
-  random_wvec = c(rancoef1, rancoef2, rancoef3, rancoef4)
+  R4 <- runif(4)
+  R4 <- R4/sum(R4)
+  rancoef1 = R4[1]
+  rancoef2 = R4[2]
+  rancoef3 = R4[3]
+  rancoef4 = R4[4]
+  random_wvec = as.matrix(c(rancoef1, rancoef2, rancoef3, rancoef4))
   
   # Construct the solution corresponding to the random weights
   randomsol = F %*% random_wvec
@@ -124,5 +135,17 @@ sapply(df_solutions, class)
 
 # Sort the solution dataframe by descending Variance, show the lowest 10 only
 head(df_solutions[order(df_solutions$Variance),], 10)
+
+#Solution_Id    Variance
+#1        Optimal 0.006430116
+#8607 RanSol_8606 0.006632959
+#4117 RanSol_4116 0.006643589
+#509   RanSol_508 0.006652932
+#8542 RanSol_8541 0.006659689
+#6736 RanSol_6735 0.006747747
+#7805 RanSol_7804 0.006753655
+#4066 RanSol_4065 0.006755018
+#9213 RanSol_9212 0.006757928
+#7053 RanSol_7052 0.006819245
 
 # Optimal solution is still the top!
