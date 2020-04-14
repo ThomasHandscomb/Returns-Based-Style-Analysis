@@ -1,4 +1,3 @@
-
 #####################################
 # Title: Returns Based Style Analysis
 # Author: Thomas Handscomb
@@ -27,27 +26,23 @@ F2 <- c(0.93, 0.45, 0.76, 0.45, 0.54, 0.64, 0.74, 0.56, 0.59, 0.45)
 F3 <- c(0.15, 0.17, 0.21, 0.23, 0.26, 0.27, 0.28, 0.26, 0.23, 0.23)
 F4 <- c(0.20, 0.25, 0.32, 0.35, 0.32, 0.30, 0.25, 0.18, 0.10, 0.09)
 
-F <- cbind(F1, F2, F3, F4)
-F
+F <- as.matrix(cbind(F1, F2, F3, F4))
 
-# Set up the symmetric, positive definite matrix D
+# Calculate the symmetric, positive definite matrix D
 e = matrix(1,T,1)
 
 M <- diag(T) - ((e %*% t(e))/T)
 M
-
-#eigen(M)$values
 
 D <- (2/T)*t(F) %*% M %*% F
 
 # Check that D is symmetric, positive semi-definite
 D - (D+t(D))/2
 
-## Set up dvec
+# Calculate the dvec
 d <- 2*(((1/T) * t(R) %*% F) - (1/(T^2))*(t(e) %*% R %*% t(e) %*% F))
-d
 
-# Build up the constraint matrix A and bvec, b0
+# Build up the constraint matrices:
 A <- t(rbind(rep(1,n), diag(n), -diag(n)))
 A
 
@@ -55,35 +50,30 @@ A
 b0 <- matrix(c(1, rep(0,n), rep(-1,n)))
 b0
 
-# Call the QP solver
+# Call the QP solver, note input the transpose of d
 sol <- solve.QP(Dmat = D, dvec = t(d), Amat = A, bvec = b0, meq = 1)
 
 # The solution gives the vector w comprised of optimal weights
-sol$solution
+wvec = as.matrix(sol$solution)
 
-#> sol$solution
-#[1] 0.6679001 0.0000000 0.3320999 0.0000000
+#> wvec
+        #[,1]
+#[1,] 0.6679001
+#[2,] 0.0000000
+#[3,] 0.3320999
+#[4,] 0.0000000
 
 # Double check that the sum of the w_i coefficients = 1
-runtot = 0
-for (i in 1:n){
-  runtot =+ runtot + sol$solution[i]
-}
-print (runtot)
+sum(wvec)
+#> sum(wvec)
 #[1] 1
-
-# Construct the optimised solution from the solve.QP output
-wvec  = {}
-for (j in 1:n){
-  wvec = rbind(wvec, sol$solution[j])
-}
-wvec
 
 # Once the weight matrix has been constructed, the optimal solution can then be constructed
 opsol <- F %*% wvec
 opsol
 
-# Calculate the fit of the optimal solution, recall the optimisation model is minimising var(R-F*wvec) 
+# Calculate the fit of the optimal solution
+# recall the optimisation model is minimising var(R-F*wvec) 
 var(R-opsol) #0.006430116
 
 # View a plot of the return stream and the optimal solution
@@ -148,4 +138,4 @@ head(df_solutions[order(df_solutions$Variance),], 10)
 #9213 RanSol_9212 0.006757928
 #7053 RanSol_7052 0.006819245
 
-# Optimal solution is still the top!
+# Optimal solution is still the best!
